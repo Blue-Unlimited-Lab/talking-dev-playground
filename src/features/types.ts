@@ -1,9 +1,14 @@
 import type { NextRequest } from "next/server";
 import type { ReactNode } from "react";
 
+export type FeatureRegistryView = {
+  all: () => FeatureDefinition[];
+  find: (namespace: string) => FeatureDefinition | undefined;
+};
+
 export type FeatureWebRoute = {
   path: string;
-  render: () => ReactNode;
+  render: (registry: FeatureRegistryView) => ReactNode;
 };
 
 export type FeatureApiRoute = {

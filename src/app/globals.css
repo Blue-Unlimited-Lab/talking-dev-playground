@@ -11,6 +11,10 @@ body {
   margin: 0;
 }
 
+a {
+  color: inherit;
+}
+
 .shell {
   max-width: 960px;
   margin: 0 auto;
@@ -26,4 +30,61 @@ h1 {
 p {
   font-size: 1rem;
   line-height: 1.6;
+}
+
+.welcome-page {
+  display: grid;
+  gap: 32px;
+}
+
+.welcome-intro {
+  max-width: 680px;
+}
+
+.eyebrow {
+  color: #6b604d;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.feature-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.feature-card {
+  background: #ffffff;
+  border: 1px solid #d8d6cc;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  min-height: 160px;
+  padding: 18px;
+  text-decoration: none;
+}
+
+.feature-card:focus-visible,
+.feature-card:hover {
+  border-color: #2f6f73;
+  outline: 2px solid #2f6f73;
+  outline-offset: 2px;
+}
+
+.feature-card strong {
+  font-size: 1.2rem;
+}
+
+.feature-card span:last-child {
+  color: #4f4f4a;
+  line-height: 1.5;
+}
+
+.feature-namespace {
+  color: #2f6f73;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.88rem;
 }

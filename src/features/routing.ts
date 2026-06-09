@@ -16,7 +16,7 @@ export function renderFeatureRoute(namespace: string, pathParts: string[] = []) 
   const path = normalizeFeaturePath(pathParts);
   const route = feature.webRoutes.find((item) => item.path === path);
 
-  return route?.render() ?? null;
+  return route?.render(featureRegistry) ?? null;
 }
 
 export async function handleFeatureApiRoute(
