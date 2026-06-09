@@ -8,6 +8,7 @@ Follow these project rules when changing the playground.
 - Keep namespaces lowercase and URL-safe: letters, numbers, and hyphens.
 - Register enabled namespaces through `src/features/index.ts`.
 - Prefer local feature code over shared abstractions until at least two namespaces need the same helper.
+- Use `docker compose up --build` for containerized development. Keep Compose mounting the repository and keep `node_modules` plus `.next` in named volumes.
 - Run `npm test`, `npm run build`, and `npm run test:e2e` before committing.
 - Make separate commits for separate steps.
 

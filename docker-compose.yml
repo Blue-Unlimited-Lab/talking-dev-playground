@@ -1,0 +1,19 @@
+services:
+  playground:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_TELEMETRY_DISABLED: "1"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - .:/app
+      - playground_node_modules:/app/node_modules
+      - playground_next:/app/.next
+    command: npm run dev -- --hostname 0.0.0.0
+
+volumes:
+  playground_node_modules:
+  playground_next:

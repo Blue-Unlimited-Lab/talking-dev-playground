@@ -8,6 +8,12 @@ This playground should stay easy to extend, easy to test, and easy to clean up. 
 
 Use Next.js with the App Router because it gives us React, server routes, static rendering, and deployment defaults without assembling a custom toolchain. Keep dependencies boring and common.
 
+## Docker Development
+
+Use the official `node:22-bookworm-slim` image for containerized development. The Dockerfile installs dependencies with `npm ci`, then the Compose service mounts the repository at `/app` and runs `npm run dev -- --hostname 0.0.0.0`.
+
+Compose keeps `/app/node_modules` and `/app/.next` in named volumes. That lets local source files update live without mixing host-installed packages with Linux container packages.
+
 ## Namespace Layout
 
 Each feature belongs in:
