@@ -2,7 +2,8 @@ import { createFrame, encodeTextToFrames, type MorseFrame } from "../../morse";
 
 export const MORSE_DEMO_TEXT = "GREEN BLUE SOLOMON BABY BLUE";
 export const MORSE_FRAME_DELAY_MS = 400;
-const queuedTexts: string[] = [];
+const queuedWords: string[] = [];
+let demoWordIndex = 0;
 
 export function sleep(ms: number, timer = setTimeout) {
   return new Promise<void>((resolve) => timer(resolve, ms));
@@ -16,14 +17,64 @@ export async function queueHandler(request: Request) {
     return Response.json({ error: "text is required" }, { status: 400 });
   }
 
-  queuedTexts.push(text);
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    queuedWords.push(word);
+  }
 
   return Response.json({ queued: text });
 }
 
-function shiftQueuedFrames() {
-  const queuedText = queuedTexts.shift();
-  return queuedText ? encodeTextToFrames(queuedText) : null;
+function splitFramesIntoWordSequences(frames: MorseFrame[]) {
+  const words: MorseFrame[][] = [];
+  let currentWord: MorseFrame[] = [];
+  let currentGapLength = 0;
+
+  for (const frame of frames) {
+    currentWord.push(frame);
+
+    if (frame.state === "gap") {
+      currentGapLength += 1;
+      if (currentGapLength >= 7) {
+        words.push(currentWord);
+        currentWord = [];
+        currentGapLength = 0;
+      }
+      continue;
+    }
+
+    currentGapLength = 0;
+  }
+
+  if (currentWord.length > 0) {
+    words.push(currentWord);
+  }
+
+  return words;
+}
+
+function getDemoWordSequences(sequence: MorseFrame[]) {
+  const fallbackSequence = sequence.length > 0 ? sequence : [createFrame("gap")];
+  return splitFramesIntoWordSequences(fallbackSequence);
+}
+
+function shiftQueuedWord(demoSequences: MorseFrame[][]) {
+  const queuedWord = queuedWords.shift();
+  if (queuedWord) {
+    return encodeTextToFrames(`${queuedWord} `);
+  }
+
+  if (demoWordIndex < demoSequences.length) {
+    const demoSequence = demoSequences[demoWordIndex];
+    demoWordIndex += 1;
+    return demoSequence;
+  }
+
+  demoWordIndex = 0;
+  return demoSequences[demoWordIndex++] ?? null;
+}
+
+function toStreamSignal(signal: MorseFrame) {
+  return { state: signal.state };
 }
 
 export function createSseStream(
@@ -31,17 +82,16 @@ export function createSseStream(
   wait = sleep,
 ) {
   const encoder = new TextEncoder();
-  const streamSequence = sequence.length > 0 ? sequence : [createFrame("gap")];
+  const demoSequences = getDemoWordSequences(sequence);
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
         while (true) {
-          const queuedFrames = shiftQueuedFrames();
-          const activeSequence = queuedFrames && queuedFrames.length > 0 ? queuedFrames : streamSequence;
+          const activeSequence = shiftQueuedWord(demoSequences) ?? [createFrame("gap")];
 
           for (const signal of activeSequence) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(signal)}\n\n`));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(toStreamSignal(signal))}\n\n`));
             await wait(MORSE_FRAME_DELAY_MS);
           }
         }
@@ -51,6 +101,11 @@ export function createSseStream(
     },
     cancel() {},
   });
+}
+
+export function resetMorseQueueForTests() {
+  queuedWords.length = 0;
+  demoWordIndex = 0;
 }
 
 export async function streamHandler() {

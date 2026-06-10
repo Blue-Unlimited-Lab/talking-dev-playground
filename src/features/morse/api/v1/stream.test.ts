@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { createSseStream, queueHandler, streamHandler } from "./stream";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { encodeTextToFrames } from "../../morse";
+import { createSseStream, queueHandler, resetMorseQueueForTests, streamHandler } from "./stream";
 
 async function readFirstChunk(response: Response) {
   const reader = response.body?.getReader();
@@ -12,7 +13,39 @@ async function readFirstChunk(response: Response) {
   return new TextDecoder().decode(value);
 }
 
+async function readChunks(reader: ReadableStreamDefaultReader<Uint8Array>, count: number) {
+  const decoder = new TextDecoder();
+  const chunks: string[] = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const { value, done } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    chunks.push(decoder.decode(value));
+  }
+
+  return chunks;
+}
+
+async function openReader(response: Response) {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error("Response body was not readable");
+  }
+  return reader;
+}
+
 describe("morse streamHandler", () => {
+  beforeEach(() => {
+    resetMorseQueueForTests();
+  });
+
+  afterEach(() => {
+    resetMorseQueueForTests();
+  });
+
   it("returns SSE headers", async () => {
     const response = await streamHandler();
 
@@ -23,10 +56,7 @@ describe("morse streamHandler", () => {
 
   it("emits JSON SSE messages for Morse states", async () => {
     const response = new Response(
-      createSseStream(
-        [{ state: "dot", colorName: "green", colorHex: "#22c55e", isLit: true }],
-        async () => {},
-      ),
+      createSseStream([{ state: "dot" }], async () => {}),
       {
         headers: {
           "Content-Type": "text/event-stream",
@@ -37,7 +67,7 @@ describe("morse streamHandler", () => {
     const firstChunk = await readFirstChunk(response);
 
     expect(firstChunk).toBe(
-      'data: {"state":"dot","colorName":"green","colorHex":"#22c55e","isLit":true}\n\n',
+      'data: {"state":"dot"}\n\n',
     );
   });
 
@@ -56,5 +86,32 @@ describe("morse streamHandler", () => {
     const firstChunk = await readFirstChunk(stream);
 
     expect(firstChunk).toContain('"state":"dot"');
+  });
+
+  it("queues new words after the word currently being transported", async () => {
+    const stream = new Response(createSseStream(encodeTextToFrames("A "), async () => {}));
+    const reader = await openReader(stream);
+
+    const firstWordFrames = encodeTextToFrames("A ").length;
+    const initialChunks = await readChunks(reader, firstWordFrames);
+    await queueHandler(
+      new Request("http://localhost/API/v1/morse/queue", {
+        method: "POST",
+        body: JSON.stringify({ text: "T" }),
+      }),
+    );
+    await queueHandler(
+      new Request("http://localhost/API/v1/morse/queue", {
+        method: "POST",
+        body: JSON.stringify({ text: "E" }),
+      }),
+    );
+
+    const nextChunks = await readChunks(reader, encodeTextToFrames("T ").length + encodeTextToFrames("E ").length);
+    await reader.cancel();
+
+    expect(initialChunks[0]).toContain('"state":"dot"');
+    expect(nextChunks.join("")).toContain('"state":"dash"');
+    expect(nextChunks.join("")).toContain('"state":"dot"');
   });
 });

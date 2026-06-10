@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { encodeTextToFrames, paletteForSignal } from "../morse";
+import { encodeTextToFrames } from "../morse";
 import { MorsePage } from "./MorsePage";
 
 type EventSourceMock = {
@@ -62,7 +62,7 @@ describe("MorsePage", () => {
 
     for (const signal of frames.slice(0, 15)) {
       act(() => {
-        eventSource.onmessage?.(new MessageEvent("message", { data: JSON.stringify(signal) }));
+        eventSource.onmessage?.(new MessageEvent("message", { data: JSON.stringify({ state: signal.state }) }));
       });
     }
 
@@ -79,7 +79,7 @@ describe("MorsePage", () => {
     const frames = encodeTextToFrames("HI ");
     for (const signal of frames) {
       act(() => {
-        eventSource.onmessage?.(new MessageEvent("message", { data: JSON.stringify(signal) }));
+        eventSource.onmessage?.(new MessageEvent("message", { data: JSON.stringify({ state: signal.state }) }));
       });
     }
 
@@ -92,14 +92,10 @@ describe("MorsePage", () => {
   it("lights the lamp for signal states and clears it for gaps", () => {
     render(<MorsePage />);
 
-    const dashSignal = paletteForSignal("dash");
     act(() => {
       eventSource.onmessage?.(
         new MessageEvent("message", {
-          data: JSON.stringify({
-            state: "dash",
-            ...dashSignal,
-          }),
+          data: JSON.stringify({ state: "dash" }),
         }),
       );
     });
@@ -107,15 +103,10 @@ describe("MorsePage", () => {
     expect(screen.getByRole("img", { name: "Morse signal lamp: waiting" })).toHaveStyle({
       backgroundColor: "rgba(0, 0, 0, 0)",
     });
-
-    const gapSignal = paletteForSignal("gap");
     act(() => {
       eventSource.onmessage?.(
         new MessageEvent("message", {
-          data: JSON.stringify({
-            state: "gap",
-            ...gapSignal,
-          }),
+          data: JSON.stringify({ state: "gap" }),
         }),
       );
     });

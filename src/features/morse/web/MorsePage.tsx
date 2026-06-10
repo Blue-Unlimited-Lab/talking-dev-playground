@@ -6,6 +6,7 @@ import {
   paletteForSignal,
   summarizeFramesIntoWordRows,
   type MorseFrame,
+  type MorseState,
   type MorseWordRow,
 } from "../morse";
 
@@ -13,6 +14,13 @@ const idleSignal = {
   state: "gap",
   ...paletteForSignal("gap"),
 } satisfies MorseFrame;
+
+function frameFromState(state: MorseState): MorseFrame {
+  return {
+    state,
+    ...paletteForSignal(state),
+  };
+}
 
 export function MorsePage() {
   const [signals, setSignals] = useState<MorseFrame[]>([]);
@@ -24,7 +32,8 @@ export function MorsePage() {
     const source = new EventSource("/API/v1/morse/stream");
 
     source.onmessage = (event) => {
-      const signal = JSON.parse(event.data) as MorseFrame;
+      const payload = JSON.parse(event.data) as { state: MorseState };
+      const signal = frameFromState(payload.state);
 
       setCurrentSignal(signal);
       setSignals((current) => [...current, signal].slice(-200));
@@ -42,7 +51,7 @@ export function MorsePage() {
   const decodedText = decodeFramesToVisibleText(signals);
   const { activeRow, rows, latestCompletedRow, latestCompletedLamp } = summarizeFramesIntoWordRows(signals);
   const lampRow = latestCompletedRow;
-  const lampFrame = latestCompletedLamp;
+  const lampFrame: MorseFrame = latestCompletedLamp ?? currentSignal;
 
   async function queueWord() {
     const text = queueText.trim();
