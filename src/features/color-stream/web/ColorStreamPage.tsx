@@ -21,7 +21,7 @@ export function ColorStreamPage() {
         setShowUpdated(false);
       }, 200);
       setLines((current) => [
-        `[${new Date().toISOString()}] New color arrived: ${event.data}`,
+        `[${new Date().toISOString()}] New color arrived: ${event.data} for 200ms`,
         ...current,
       ]);
     };
