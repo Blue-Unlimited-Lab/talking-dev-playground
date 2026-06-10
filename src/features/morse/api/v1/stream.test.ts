@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { encodeTextToFrames } from "../../morse";
-import { createSseStream, queueHandler, resetMorseQueueForTests, streamHandler } from "./stream";
+import { createSseStream, chooseRandomDemoWord, parseDemoWords, resetMorseQueueForTests, queueHandler, streamHandler } from "./stream";
 
 async function readFirstChunk(response: Response) {
   const reader = response.body?.getReader();
@@ -44,6 +44,14 @@ describe("morse streamHandler", () => {
 
   afterEach(() => {
     resetMorseQueueForTests();
+  });
+
+  it("parses one demo word per line", () => {
+    expect(parseDemoWords(" green \n\nblue\r\nsolomon\n")).toEqual(["GREEN", "BLUE", "SOLOMON"]);
+  });
+
+  it("chooses a random demo word from the external list", () => {
+    expect(chooseRandomDemoWord(["GREEN", "BLUE", "SOLOMON"], () => 0.4)).toBe("BLUE");
   });
 
   it("returns SSE headers", async () => {
@@ -113,5 +121,12 @@ describe("morse streamHandler", () => {
     expect(initialChunks[0]).toContain('"state":"dot"');
     expect(nextChunks.join("")).toContain('"state":"dash"');
     expect(nextChunks.join("")).toContain('"state":"dot"');
+  });
+
+  it("falls back to a generated gap frame when a sequence source returns no frames", async () => {
+    const response = new Response(createSseStream([], async () => {}));
+    const firstChunk = await readFirstChunk(response);
+
+    expect(firstChunk).toContain('"state":"gap"');
   });
 });
