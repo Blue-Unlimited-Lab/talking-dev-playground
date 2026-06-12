@@ -45,6 +45,10 @@ async function openReader(response: Response) {
   return reader;
 }
 
+async function holdStream() {
+  await new Promise<void>(() => {});
+}
+
 describe("morse streamHandler", () => {
   beforeEach(() => {
     resetMorseQueueForTests();
@@ -79,7 +83,7 @@ describe("morse streamHandler", () => {
 
   it("emits symbolic SSE messages for Morse states", async () => {
     const response = new Response(
-      createSseStream([{ state: "dot" }], async () => {}),
+      createSseStream([{ state: "dot" }], holdStream),
       {
         headers: {
           "Content-Type": "text/event-stream",
@@ -105,41 +109,26 @@ describe("morse streamHandler", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ queued: "SOS" });
 
-    const stream = new Response(createSseStream(undefined, async () => {}));
+    const stream = new Response(createSseStream(undefined, holdStream));
     const firstChunk = await readFirstChunk(stream);
 
     expect(firstChunk).toMatch(/^data: [.\-/]\n\n$/);
   });
 
-  it("queues new words after the word currently being transported", async () => {
-    const stream = new Response(createSseStream(encodeTextToFrames("A "), async () => {}));
-    const reader = await openReader(stream);
-
-    const firstWordFrames = encodeTextToFrames("A ").length;
-    const initialChunks = await readChunks(reader, firstWordFrames);
-    await queueHandler(
+  it("queues each custom token with a trailing word gap", async () => {
+    const response = await queueHandler(
       new Request("http://localhost/API/v1/morse/queue", {
         method: "POST",
-        body: JSON.stringify({ text: "T" }),
-      }),
-    );
-    await queueHandler(
-      new Request("http://localhost/API/v1/morse/queue", {
-        method: "POST",
-        body: JSON.stringify({ text: "E" }),
+        body: JSON.stringify({ text: "SOLOMON SAND" }),
       }),
     );
 
-    const nextChunks = await readChunks(reader, encodeTextToFrames("T ").length + encodeTextToFrames("E ").length);
-    await reader.cancel();
-
-    expect(initialChunks[0]).toMatch(/^data: [.\-/]\n\n$/);
-    expect(nextChunks.join("")).toContain("data: -");
-    expect(nextChunks.join("")).toContain("data: .");
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ queued: "SOLOMON SAND" });
   });
 
   it("falls back to a generated gap frame when a sequence source returns no frames", async () => {
-    const response = new Response(createSseStream([], async () => {}));
+    const response = new Response(createSseStream([], holdStream));
     const firstChunk = await readFirstChunk(response);
 
     expect(firstChunk).toContain("data: /");

@@ -16,6 +16,7 @@ const MORSE_DEMO_WORDS_PATH = path.join(
 );
 const queuedWords: string[] = [];
 let demoWordIndex = 0;
+let demoWordsCache: string[] | null = null;
 
 type MorseSequenceSource =
   | MorseFrame[]
@@ -66,8 +67,16 @@ export async function loadDemoWords(read = readFile) {
 }
 
 async function createRandomDemoSequence(random = Math.random) {
-  const demoWords = await loadDemoWords();
-  return encodeTextToFrames(chooseRandomDemoWord(demoWords, random));
+  const demoWords = await getDemoWords();
+  return encodeTextToFrames(`${chooseRandomDemoWord(demoWords, random)} `);
+}
+
+async function getDemoWords() {
+  if (!demoWordsCache) {
+    demoWordsCache = await loadDemoWords();
+  }
+
+  return demoWordsCache;
 }
 
 export async function queueHandler(request: Request) {
@@ -78,8 +87,8 @@ export async function queueHandler(request: Request) {
     return Response.json({ error: "text is required" }, { status: 400 });
   }
 
-  for (const word of text.split(/\s+/).filter(Boolean)) {
-    queuedWords.push(word);
+  for (const word of text.split(/\s+/u).filter(Boolean)) {
+    queuedWords.push(`${word} `);
   }
 
   return Response.json({ queued: text });
@@ -121,7 +130,7 @@ function getDemoWordSequences(sequence: MorseFrame[]) {
 function shiftQueuedWord(demoSequences: MorseFrame[][]) {
   const queuedWord = queuedWords.shift();
   if (queuedWord) {
-    return encodeTextToFrames(`${queuedWord} `);
+    return encodeTextToFrames(queuedWord);
   }
 
   if (demoWordIndex < demoSequences.length) {
@@ -146,6 +155,15 @@ function toStreamSignal(signal: MorseFrame) {
   return "/";
 }
 
+function appendSequenceSeparator(sequence: MorseFrame[]) {
+  const lastSignal = sequence[sequence.length - 1];
+  if (lastSignal?.state === "gap") {
+    return sequence;
+  }
+
+  return [...sequence, createFrame("gap"), createFrame("gap"), createFrame("gap")];
+}
+
 export function createSseStream(
   sequenceSource: MorseSequenceSource = createRandomDemoSequence,
   wait = sleep,
@@ -160,7 +178,9 @@ export function createSseStream(
           const fallbackSequence =
             typeof sequenceSource === "function" ? await sequenceSource() : sequenceSource;
           const demoSequences = getDemoWordSequences(fallbackSequence);
-          const activeSequence = shiftQueuedWord(demoSequences) ?? [createFrame("gap")];
+          const activeSequence = appendSequenceSeparator(
+            shiftQueuedWord(demoSequences) ?? [createFrame("gap")],
+          );
 
           for (const signal of activeSequence) {
             controller.enqueue(encoder.encode(`data: ${toStreamSignal(signal)}\n\n`));
@@ -178,6 +198,7 @@ export function createSseStream(
 export function resetMorseQueueForTests() {
   queuedWords.length = 0;
   demoWordIndex = 0;
+  demoWordsCache = null;
 }
 
 export async function streamHandler(request: Request) {
