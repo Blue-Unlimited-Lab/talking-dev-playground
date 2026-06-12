@@ -104,38 +104,34 @@ function createSignal(state: MorseState, durationUnits: number): MorseSignal {
 function encodeTextToSignals(text: string) {
   const normalized = text.toUpperCase();
   const signals: MorseSignal[] = [];
+  const tokens = normalized.match(/\S+|\s+/gu) ?? [];
 
-  for (let index = 0; index < normalized.length; index += 1) {
-    const character = normalized[index] as MorseCharacter | undefined;
-    const morse = character ? MORSE_ALPHABET[character] : undefined;
-
-    if (!morse) {
-      continue;
-    }
-
-    if (character === " ") {
+  for (const token of tokens) {
+    if (/^\s+$/u.test(token)) {
       signals.push(createSignal("gap", 7));
       continue;
     }
 
-    for (let symbolIndex = 0; symbolIndex < morse.length; symbolIndex += 1) {
-      const symbol = morse[symbolIndex];
-      signals.push(createSignal(symbol === "." ? "dot" : "dash", symbol === "." ? 1 : 3));
+    for (let characterIndex = 0; characterIndex < token.length; characterIndex += 1) {
+      const character = token[characterIndex] as MorseCharacter | undefined;
+      const morse = character ? MORSE_ALPHABET[character] : undefined;
 
-      if (symbolIndex < morse.length - 1) {
-        signals.push(createSignal("gap", 1));
+      if (!morse) {
+        continue;
       }
-    }
 
-    const nextCharacter = normalized[index + 1] as MorseCharacter | undefined;
-    if (!nextCharacter) {
-      continue;
-    }
+      for (let symbolIndex = 0; symbolIndex < morse.length; symbolIndex += 1) {
+        const symbol = morse[symbolIndex];
+        signals.push(createSignal(symbol === "." ? "dot" : "dash", symbol === "." ? 1 : 3));
 
-    signals.push(createSignal("gap", nextCharacter === " " ? 7 : 3));
+        if (symbolIndex < morse.length - 1) {
+          signals.push(createSignal("gap", 1));
+        }
+      }
 
-    if (nextCharacter === " ") {
-      index += 1;
+      if (characterIndex < token.length - 1) {
+        signals.push(createSignal("gap", 3));
+      }
     }
   }
 

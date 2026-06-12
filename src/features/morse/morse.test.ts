@@ -87,6 +87,12 @@ describe("morse helpers", () => {
     expect(decodeFramesToText(encodeTextToFrames(originalText))).toBe(originalText);
   });
 
+  it("keeps word boundaries intact for adjacent words", () => {
+    const frames = encodeTextToFrames("SOLOMON BLUE");
+
+    expect(decodeFramesToText(frames)).toBe("SOLOMON BLUE");
+  });
+
   it("only reveals completed letters in the visible decode", () => {
     const frames = encodeTextToFrames("SO");
 
