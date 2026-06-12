@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import {
   decodeFramesToVisibleText,
+  MORSE_FRAME_DELAY_MAX_MS,
+  MORSE_FRAME_DELAY_MIN_MS,
+  MORSE_FRAME_DELAY_STEP_MS,
   paletteForSignal,
   summarizeFramesIntoWordRows,
   type MorseFrame,
@@ -43,9 +46,10 @@ export function MorsePage() {
   const [currentSignal, setCurrentSignal] = useState<MorseFrame>(idleSignal);
   const [queueText, setQueueText] = useState("");
   const [queueStatus, setQueueStatus] = useState("Ready");
+  const [emitCycleMs, setEmitCycleMs] = useState(400);
 
   useEffect(() => {
-    const source = new EventSource("/API/v1/morse/stream");
+    const source = new EventSource(`/API/v1/morse/stream?delayMs=${emitCycleMs}`);
 
     source.onmessage = (event) => {
       const state = stateFromStreamData(event.data);
@@ -66,7 +70,7 @@ export function MorsePage() {
     return () => {
       source.close();
     };
-  }, []);
+  }, [emitCycleMs]);
 
   const decodedText = decodeFramesToVisibleText(signals);
   const { activeRow, rows, latestCompletedRow, latestCompletedLamp } = summarizeFramesIntoWordRows(signals);
@@ -103,9 +107,25 @@ export function MorsePage() {
     <main>
       <h1>Morse Stream</h1>
       <p>
-        A three-state stream sends one 0.4 second Morse frame at a time. Each word builds
-        letter by letter, then lands on its own row with the Morse shown beside it.
+        A three-state stream sends one Morse frame at a time. Each word builds letter by letter,
+        then lands on its own row with the Morse shown beside it.
       </p>
+      <section aria-label="Emit cycle">
+        <label htmlFor="morse-emit-cycle">Emit cycle</label>
+        <div style={{ display: "grid", gap: 8, marginTop: 8, maxWidth: 420 }}>
+          <input
+            id="morse-emit-cycle"
+            aria-label="Emit cycle"
+            type="range"
+            min={MORSE_FRAME_DELAY_MIN_MS}
+            max={MORSE_FRAME_DELAY_MAX_MS}
+            step={MORSE_FRAME_DELAY_STEP_MS}
+            value={emitCycleMs}
+            onChange={(event) => setEmitCycleMs(Number(event.target.value))}
+          />
+          <div style={{ fontSize: 14, color: "#475569" }}>{emitCycleMs} ms</div>
+        </div>
+      </section>
       <section aria-label="Queue custom word">
         <label htmlFor="morse-queue-input">Custom word</label>
         <div style={{ display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap" }}>

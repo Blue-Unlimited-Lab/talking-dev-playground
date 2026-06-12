@@ -1,9 +1,15 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createFrame, encodeTextToFrames, type MorseFrame } from "../../morse";
-
-export const MORSE_FRAME_DELAY_MS = 400;
+import {
+  MORSE_FRAME_DELAY_MAX_MS,
+  MORSE_FRAME_DELAY_MIN_MS,
+  MORSE_FRAME_DELAY_MS,
+  MORSE_FRAME_DELAY_STEP_MS,
+  createFrame,
+  encodeTextToFrames,
+  type MorseFrame,
+} from "../../morse";
 const MORSE_DEMO_WORDS_PATH = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../demo-words.txt",
@@ -17,6 +23,24 @@ type MorseSequenceSource =
 
 export function sleep(ms: number, timer = setTimeout) {
   return new Promise<void>((resolve) => timer(resolve, ms));
+}
+
+export function parseMorseFrameDelayMs(request: Request | URL | string | undefined) {
+  const url = request
+    ? request instanceof URL
+      ? request
+      : new URL(typeof request === "string" ? request : request.url)
+    : null;
+  const rawDelayMs = url?.searchParams.get("delayMs");
+  const parsedDelayMs = rawDelayMs ? Number(rawDelayMs) : MORSE_FRAME_DELAY_MS;
+
+  if (!Number.isFinite(parsedDelayMs)) {
+    return MORSE_FRAME_DELAY_MS;
+  }
+
+  const roundedDelayMs =
+    Math.round(parsedDelayMs / MORSE_FRAME_DELAY_STEP_MS) * MORSE_FRAME_DELAY_STEP_MS;
+  return Math.min(MORSE_FRAME_DELAY_MAX_MS, Math.max(MORSE_FRAME_DELAY_MIN_MS, roundedDelayMs));
 }
 
 export function parseDemoWords(contents: string) {
@@ -125,6 +149,7 @@ function toStreamSignal(signal: MorseFrame) {
 export function createSseStream(
   sequenceSource: MorseSequenceSource = createRandomDemoSequence,
   wait = sleep,
+  frameDelayMs = MORSE_FRAME_DELAY_MS,
 ) {
   const encoder = new TextEncoder();
 
@@ -139,7 +164,7 @@ export function createSseStream(
 
           for (const signal of activeSequence) {
             controller.enqueue(encoder.encode(`data: ${toStreamSignal(signal)}\n\n`));
-            await wait(MORSE_FRAME_DELAY_MS);
+            await wait(frameDelayMs);
           }
         }
       } catch {
@@ -155,8 +180,8 @@ export function resetMorseQueueForTests() {
   demoWordIndex = 0;
 }
 
-export async function streamHandler() {
-  const stream = createSseStream();
+export async function streamHandler(request: Request) {
+  const stream = createSseStream(undefined, undefined, parseMorseFrameDelayMs(request));
 
   return new Response(stream, {
     headers: {

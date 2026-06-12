@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { encodeTextToFrames } from "../../morse";
-import { createSseStream, chooseRandomDemoWord, parseDemoWords, resetMorseQueueForTests, queueHandler, streamHandler } from "./stream";
+import {
+  createSseStream,
+  chooseRandomDemoWord,
+  parseDemoWords,
+  parseMorseFrameDelayMs,
+  resetMorseQueueForTests,
+  queueHandler,
+  streamHandler,
+} from "./stream";
 
 async function readFirstChunk(response: Response) {
   const reader = response.body?.getReader();
@@ -55,11 +63,18 @@ describe("morse streamHandler", () => {
   });
 
   it("returns SSE headers", async () => {
-    const response = await streamHandler();
+    const response = await streamHandler(new Request("http://localhost/API/v1/morse/stream"));
 
     expect(response.headers.get("Content-Type")).toBe("text/event-stream");
     expect(response.headers.get("Cache-Control")).toContain("no-cache");
     expect(response.headers.get("Connection")).toBe("keep-alive");
+  });
+
+  it("parses the configured emit cycle delay from the request", () => {
+    expect(parseMorseFrameDelayMs(new Request("http://localhost/API/v1/morse/stream"))).toBe(400);
+    expect(parseMorseFrameDelayMs(new Request("http://localhost/API/v1/morse/stream?delayMs=700"))).toBe(700);
+    expect(parseMorseFrameDelayMs(new Request("http://localhost/API/v1/morse/stream?delayMs=725"))).toBe(700);
+    expect(parseMorseFrameDelayMs(new Request("http://localhost/API/v1/morse/stream?delayMs=1200"))).toBe(1000);
   });
 
   it("emits symbolic SSE messages for Morse states", async () => {

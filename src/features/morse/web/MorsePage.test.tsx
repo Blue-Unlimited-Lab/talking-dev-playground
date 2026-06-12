@@ -48,6 +48,7 @@ describe("MorsePage", () => {
 
     expect(screen.getByRole("heading", { name: "Morse Stream" })).toBeInTheDocument();
     expect(screen.getByText("Decoded text:")).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Emit cycle" })).toHaveValue("400");
     expect(screen.getByRole("img", { name: /Morse signal lamp: waiting/ })).toHaveStyle({
       backgroundColor: "rgba(0, 0, 0, 0)",
     });
@@ -56,7 +57,7 @@ describe("MorsePage", () => {
   it("keeps the lamp idle while a word is still forming", () => {
     render(<MorsePage />);
 
-    expect(vi.mocked(EventSource)).toHaveBeenCalledWith("/API/v1/morse/stream");
+    expect(vi.mocked(EventSource)).toHaveBeenCalledWith("/API/v1/morse/stream?delayMs=400");
 
     const frames = encodeTextToFrames("HI THERE");
 
@@ -134,5 +135,13 @@ describe("MorsePage", () => {
     });
     expect(screen.getByLabelText("Custom word")).toHaveValue("");
     expect(screen.getByRole("status")).toHaveTextContent("Queued sos");
+  });
+
+  it("updates the stream URL when the emit cycle changes", () => {
+    render(<MorsePage />);
+
+    fireEvent.change(screen.getByRole("slider", { name: "Emit cycle" }), { target: { value: "700" } });
+
+    expect(vi.mocked(EventSource)).toHaveBeenLastCalledWith("/API/v1/morse/stream?delayMs=700");
   });
 });

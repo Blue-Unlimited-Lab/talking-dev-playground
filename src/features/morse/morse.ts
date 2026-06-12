@@ -1,3 +1,8 @@
+export const MORSE_FRAME_DELAY_MS = 400;
+export const MORSE_FRAME_DELAY_MIN_MS = 0;
+export const MORSE_FRAME_DELAY_MAX_MS = 1000;
+export const MORSE_FRAME_DELAY_STEP_MS = 100;
+
 export const MORSE_ALPHABET = {
   A: ".-",
   B: "-...",
