@@ -13,8 +13,48 @@ function compactFrameShape(frames: MorseFrame[]) {
 }
 
 describe("morse helpers", () => {
-  it("keeps space in the canonical alphabet reference", () => {
-    expect(MORSE_ALPHABET[" "]).toBe("/");
+  it("keeps all letters, digits, and space in the canonical alphabet reference", () => {
+    const expectedAlphabet = {
+      A: ".-",
+      B: "-...",
+      C: "-.-.",
+      D: "-..",
+      E: ".",
+      F: "..-.",
+      G: "--.",
+      H: "....",
+      I: "..",
+      J: ".---",
+      K: "-.-",
+      L: ".-..",
+      M: "--",
+      N: "-.",
+      O: "---",
+      P: ".--.",
+      Q: "--.-",
+      R: ".-.",
+      S: "...",
+      T: "-",
+      U: "..-",
+      V: "...-",
+      W: ".--",
+      X: "-..-",
+      Y: "-.--",
+      Z: "--..",
+      0: "-----",
+      1: ".----",
+      2: "..---",
+      3: "...--",
+      4: "....-",
+      5: ".....",
+      6: "-....",
+      7: "--...",
+      8: "---..",
+      9: "----.",
+      " ": "/",
+    } as const;
+
+    expect(MORSE_ALPHABET).toEqual(expectedAlphabet);
   });
 
   it("encodes text into 0.4 second Morse frames", () => {
