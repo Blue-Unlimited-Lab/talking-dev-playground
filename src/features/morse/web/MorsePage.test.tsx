@@ -62,7 +62,11 @@ describe("MorsePage", () => {
 
     for (const signal of frames.slice(0, 15)) {
       act(() => {
-        eventSource.onmessage?.(new MessageEvent("message", { data: JSON.stringify({ state: signal.state }) }));
+        eventSource.onmessage?.(
+          new MessageEvent("message", {
+            data: signal.state === "dot" ? "." : signal.state === "dash" ? "-" : "/",
+          }),
+        );
       });
     }
 
@@ -79,7 +83,11 @@ describe("MorsePage", () => {
     const frames = encodeTextToFrames("HI ");
     for (const signal of frames) {
       act(() => {
-        eventSource.onmessage?.(new MessageEvent("message", { data: JSON.stringify({ state: signal.state }) }));
+        eventSource.onmessage?.(
+          new MessageEvent("message", {
+            data: signal.state === "dot" ? "." : signal.state === "dash" ? "-" : "/",
+          }),
+        );
       });
     }
 
@@ -93,22 +101,14 @@ describe("MorsePage", () => {
     render(<MorsePage />);
 
     act(() => {
-      eventSource.onmessage?.(
-        new MessageEvent("message", {
-          data: JSON.stringify({ state: "dash" }),
-        }),
-      );
+      eventSource.onmessage?.(new MessageEvent("message", { data: "-" }));
     });
 
     expect(screen.getByRole("img", { name: "Morse signal lamp: waiting" })).toHaveStyle({
       backgroundColor: "rgba(0, 0, 0, 0)",
     });
     act(() => {
-      eventSource.onmessage?.(
-        new MessageEvent("message", {
-          data: JSON.stringify({ state: "gap" }),
-        }),
-      );
+      eventSource.onmessage?.(new MessageEvent("message", { data: "/" }));
     });
 
     expect(screen.getByRole("img", { name: "Morse signal lamp: waiting" })).toHaveStyle({

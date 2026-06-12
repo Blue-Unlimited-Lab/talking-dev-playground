@@ -62,7 +62,7 @@ describe("morse streamHandler", () => {
     expect(response.headers.get("Connection")).toBe("keep-alive");
   });
 
-  it("emits JSON SSE messages for Morse states", async () => {
+  it("emits symbolic SSE messages for Morse states", async () => {
     const response = new Response(
       createSseStream([{ state: "dot" }], async () => {}),
       {
@@ -75,7 +75,7 @@ describe("morse streamHandler", () => {
     const firstChunk = await readFirstChunk(response);
 
     expect(firstChunk).toBe(
-      'data: {"state":"dot"}\n\n',
+      "data: .\n\n",
     );
   });
 
@@ -93,7 +93,7 @@ describe("morse streamHandler", () => {
     const stream = new Response(createSseStream(undefined, async () => {}));
     const firstChunk = await readFirstChunk(stream);
 
-    expect(firstChunk).toContain('"state":"dot"');
+    expect(firstChunk).toMatch(/^data: [.\-/]\n\n$/);
   });
 
   it("queues new words after the word currently being transported", async () => {
@@ -118,15 +118,15 @@ describe("morse streamHandler", () => {
     const nextChunks = await readChunks(reader, encodeTextToFrames("T ").length + encodeTextToFrames("E ").length);
     await reader.cancel();
 
-    expect(initialChunks[0]).toContain('"state":"dot"');
-    expect(nextChunks.join("")).toContain('"state":"dash"');
-    expect(nextChunks.join("")).toContain('"state":"dot"');
+    expect(initialChunks[0]).toMatch(/^data: [.\-/]\n\n$/);
+    expect(nextChunks.join("")).toContain("data: -");
+    expect(nextChunks.join("")).toContain("data: .");
   });
 
   it("falls back to a generated gap frame when a sequence source returns no frames", async () => {
     const response = new Response(createSseStream([], async () => {}));
     const firstChunk = await readFirstChunk(response);
 
-    expect(firstChunk).toContain('"state":"gap"');
+    expect(firstChunk).toContain("data: /");
   });
 });

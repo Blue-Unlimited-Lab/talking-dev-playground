@@ -111,7 +111,15 @@ function shiftQueuedWord(demoSequences: MorseFrame[][]) {
 }
 
 function toStreamSignal(signal: MorseFrame) {
-  return { state: signal.state };
+  if (signal.state === "dot") {
+    return ".";
+  }
+
+  if (signal.state === "dash") {
+    return "-";
+  }
+
+  return "/";
 }
 
 export function createSseStream(
@@ -130,7 +138,7 @@ export function createSseStream(
           const activeSequence = shiftQueuedWord(demoSequences) ?? [createFrame("gap")];
 
           for (const signal of activeSequence) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(toStreamSignal(signal))}\n\n`));
+            controller.enqueue(encoder.encode(`data: ${toStreamSignal(signal)}\n\n`));
             await wait(MORSE_FRAME_DELAY_MS);
           }
         }

@@ -22,6 +22,22 @@ function frameFromState(state: MorseState): MorseFrame {
   };
 }
 
+function stateFromStreamData(data: string): MorseState | null {
+  if (data === ".") {
+    return "dot";
+  }
+
+  if (data === "-") {
+    return "dash";
+  }
+
+  if (data === "/") {
+    return "gap";
+  }
+
+  return null;
+}
+
 export function MorsePage() {
   const [signals, setSignals] = useState<MorseFrame[]>([]);
   const [currentSignal, setCurrentSignal] = useState<MorseFrame>(idleSignal);
@@ -32,8 +48,12 @@ export function MorsePage() {
     const source = new EventSource("/API/v1/morse/stream");
 
     source.onmessage = (event) => {
-      const payload = JSON.parse(event.data) as { state: MorseState };
-      const signal = frameFromState(payload.state);
+      const state = stateFromStreamData(event.data);
+      if (!state) {
+        return;
+      }
+
+      const signal = frameFromState(state);
 
       setCurrentSignal(signal);
       setSignals((current) => [...current, signal].slice(-200));
